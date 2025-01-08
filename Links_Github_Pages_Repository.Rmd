@@ -10,6 +10,6 @@ output: html_document
 https://mamadousab.github.io/mamadou_rmcfp/
 
 
-## Link to GitHub project repository
+## Link to my GitHub project repository
 
 https://github.com/mamadousab/mamadou_rmcfp
