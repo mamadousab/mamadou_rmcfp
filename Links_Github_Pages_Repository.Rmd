@@ -1,0 +1,15 @@
+---
+title: ""HIV:0-14 YEARS Over 94 Countries: R Masterclass Final Project)"
+author: "Mamadou Saidou Alareny Baldé (Guinea)"
+date: "`1/8/2025`"
+output: html_document
+---
+
+## Link to my Github Page
+
+https://mamadousab.github.io/mamadou_rmcfp/
+
+
+## Link to GitHub project repository
+
+https://github.com/mamadousab/mamadou_rmcfp
