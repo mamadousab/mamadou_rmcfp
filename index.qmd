@@ -1,0 +1,620 @@
+---
+title: "HIV:0-14 YEARS-Mamadou Saidou Alareny Baldé (Guinea)"
+format: dashboard  
+theme: lux
+---
+
+```{r}
+# Load packages 
+if(!require(pacman)) install.packages("pacman")
+pacman::p_load(tidyverse, 
+               here,
+               sf,
+               bslib, 
+               bsicons,
+               rnaturalearth, 
+               plotly, 
+               countrycode, 
+               htmltools, 
+               reactable,
+               janitor,
+               dplyr
+               )
+```
+
+
+
+
+```{r}
+# Loading the dataset hiv_0_14.csv
+hiv_0_14d1 <- read.csv(here("data", "hiv_0_14.csv"))
+```
+
+
+
+```{r}
+# Removing the X
+colnames(hiv_0_14d1) <- gsub("^X", "", colnames(hiv_0_14d1))
+```
+
+```{r}
+# Pivoting longer the data
+hiv_0_14d1_long <- hiv_0_14d1 %>%
+pivot_longer(
+cols = `1990`:`2022`,       
+names_to = "year",
+values_to = "total_hiv_under14"
+  )
+```
+
+```{r}
+# Convert year and total_hiv_under14 to numeric  and remove 'k'
+hiv_0_14_numeric <- hiv_0_14d1_long %>%
+   mutate(
+     # Clean and trim the input
+     total_hiv_under14 = str_trim(total_hiv_under14),
+     
+     # Convert year to numeric, handling missing values
+     year_numeric = as.numeric(year),
+     
+     # Handle numeric conversion for total_hiv_under14
+     total_hiv_under14_numeric = case_when(
+       is.na(total_hiv_under14) | total_hiv_under14 == "" ~ NA_real_, # Handle missing or empty strings
+       str_detect(total_hiv_under14, 'k$') ~ as.numeric(str_remove(total_hiv_under14, 'k')) * 1000, # Convert 'k' values
+       TRUE ~ suppressWarnings(as.numeric(total_hiv_under14)) # Suppress warnings for invalid numeric conversion
+     )
+   )
+ 
+```
+
+
+
+```{r}
+# Loading the dataset hiv_ni_0_14.csv
+hiv_ni_0_14d1 <- read.csv(here("data", "hiv_ni_0_14.csv"))
+```
+
+
+```{r}
+# Removing the X
+colnames(hiv_ni_0_14d1) <- gsub("^X", "", colnames(hiv_ni_0_14d1))
+```
+
+```{r}
+# Pivoting longer the data
+hiv_ni_0_14d1_long <- hiv_ni_0_14d1 %>%
+pivot_longer(
+cols = `1990`:`2022`,       
+names_to = "year",
+values_to = "new_hiv_under14"
+  )
+```
+
+```{r}
+# Convert year and total_hiv_under14 to numeric  and remove 'k'
+hiv_ni_0_14_numeric <- hiv_ni_0_14d1_long %>%
+   mutate(
+     # Clean and trim the input
+     new_hiv_under14 = str_trim(new_hiv_under14),
+     
+     # Convert year to numeric, handling missing values
+     year_numeric = as.numeric(year),
+     
+     # Handle numeric conversion for total_hiv_under14
+     new_hiv_under14_numeric = case_when(
+       is.na(new_hiv_under14) | new_hiv_under14 == "" ~ NA_real_, # Handle missing or empty strings
+       str_detect(new_hiv_under14, 'k$') ~ as.numeric(str_remove(new_hiv_under14, 'k')) * 1000, # Convert 'k' values
+       TRUE ~ suppressWarnings(as.numeric(new_hiv_under14)) # Suppress warnings for invalid numeric conversion
+     )
+   )
+```
+
+```{r}
+# Check for country name mismatches
+# setdiff(hiv_0_14_numeric$country, hiv_ni_0_14_numeric$country)
+# setdiff(hiv_ni_0_14_numeric$country, hiv_0_14_numeric$country)
+```
+
+
+```{r}
+# Add ISO codes to hiv_0_14_numeric
+hiv_0_14_numeric1 <- hiv_0_14_numeric %>%
+  mutate(country_iso = countrycode(country, "country.name", "iso3c"))
+
+```
+
+```{r}
+# Add ISO codes to hiv_ni_0_14_numeric
+hiv_ni_0_14_numeric1 <- hiv_ni_0_14_numeric %>%
+  mutate(country_iso = countrycode(country, "country.name", "iso3c"))
+
+```
+
+
+
+```{r}
+# Joining the two HIV datasets
+hiv_combined <- left_join(hiv_0_14_numeric1, hiv_ni_0_14_numeric1, by = c("country_iso", "year"))
+
+```
+
+
+
+
+```{r}
+# Loading the dataset data_geographies_gapminder.csv
+country_metadata1 <- read.csv(here("data", "data_geographies_gapminder.csv"))
+```
+
+```{r}
+# Selecting relevant variables
+country_metadata2 <- country_metadata1 %>% 
+  select("name", "four_regions", "World.bank..4.income.groups.2017")
+
+```
+
+
+```{r}
+# Renaming relevants variables
+country_metadata3 <- country_metadata2 %>%
+  rename(country=name, continent = four_regions, income_class=World.bank..4.income.groups.2017)
+
+```
+
+
+
+
+```{r}
+# Add ISO codes to country_metadata3
+country_metadata3_iso <- country_metadata3 %>%
+  mutate(country_iso = countrycode(country, "country.name", "iso3c"))
+
+```
+
+
+```{r}
+# Check for country name mismatches
+# setdiff(hiv_combined$country_iso, country_metadata3_iso$country_iso)
+# setdiff(country_metadata3_iso$country_iso, hiv_combined$country_iso)
+```
+
+
+
+```{r}
+# Joinning country_metadata3_iso and hiv_combined
+hiv_metadata_combined <- left_join(country_metadata3_iso, hiv_combined, by = c("country_iso"))
+
+```
+
+```{r}
+# Selecting relevant variables
+hiv_metadata_final <- hiv_metadata_combined %>% 
+  select("country_iso", "country", "continent", "year", "total_hiv_under14_numeric", "new_hiv_under14_numeric", "income_class" )
+
+```
+
+
+```{r}
+hiv_metadata_final2022 <- hiv_metadata_final %>% 
+  filter(year == 2022) # Filtering the year 2022 
+
+highest_hiv_cases_country <- hiv_metadata_final2022 %>%
+  arrange(-total_hiv_under14_numeric) %>%
+  head(1) %>%
+  pull(country) # Pulling the Country with highest HIV cases 
+
+highest_hiv_cases_value <- 
+  hiv_metadata_final2022 %>%
+  arrange(-total_hiv_under14_numeric) %>%
+  head(1) %>%
+  pull(total_hiv_under14_numeric) # Pulling the the value of the highest HIV cases 
+
+
+lowest_hiv_cases_country <- hiv_metadata_final2022 %>%
+  arrange(total_hiv_under14_numeric) %>%
+  head(1) %>%
+  pull(country) # Pulling the Country with lowest HIV cases 
+
+lowest_hiv_cases_value <- 
+  hiv_metadata_final2022 %>%
+  arrange(total_hiv_under14_numeric) %>%
+  head(1) %>%
+  pull(total_hiv_under14_numeric) # Pulling the the value of the lowest HIV cases  
+
+
+# Calculate the total of HIV in 2022 
+total_hiv_0_14 <- sum(hiv_metadata_final2022$total_hiv_under14_numeric, na.rm = TRUE)
+
+```
+
+
+```{r}
+highest_hiv_new_cases_country <- hiv_metadata_final2022 %>%
+  arrange(-new_hiv_under14_numeric) %>%
+  head(1) %>%
+  pull(country) # Pulling the Country with highest HIV new cases in 2022
+
+highest_hiv_new_cases_value <- 
+  hiv_metadata_final2022 %>%
+  arrange(-new_hiv_under14_numeric) %>%
+  head(1) %>%
+  pull(new_hiv_under14_numeric) # Pulling the the value of the highest HIV new cases in 2022 
+
+
+lowest_hiv_new_cases_country <- hiv_metadata_final2022 %>%
+  arrange(new_hiv_under14_numeric) %>%
+  head(1) %>%
+  pull(country) # Pulling the Country with lowest HIV new cases 
+
+lowest_hiv_new_cases_value <- 
+  hiv_metadata_final2022 %>%
+  arrange(new_hiv_under14_numeric) %>%
+  head(1) %>%
+  pull(new_hiv_under14_numeric) # Pulling the the value of the lowest HIV new cases 
+
+
+# Calculate the total HIV new cases in 2022 around the World
+total_hiv_nc_0_14 <- sum(hiv_metadata_final2022$new_hiv_under14_numeric, na.rm = TRUE)
+
+```
+
+
+```{r}
+# Create the plot
+plot1 <- hiv_metadata_final %>%
+  ggplot(aes(
+    x = total_hiv_under14_numeric,
+    y = new_hiv_under14_numeric,
+    color = continent,  # Map color to Continent
+    frame = year,  # Frame for animation
+    size = new_hiv_under14_numeric  # Map size to bubble size
+  )) +
+  geom_point(alpha = 0.6) +
+  scale_x_log10(
+    breaks = c(100, 1000, 10000, 100000),
+    labels = c("100", "1K", "10K", "100K")
+  ) +
+  scale_size_continuous(guide = "none") +  # Exclude bubble size from legend
+  
+  labs(
+    x = "Total HIV (0 to 14 years)",
+    y = "New HIV (0 to 14 years)",
+    
+  ) +
+  theme_minimal() 
+
+# Convert to interactive plot
+ # ggplotly(plot1)
+
+```
+
+
+```{r}
+# Visualize HIV trends for 4 countries
+hiv_metadata_final1 <- hiv_metadata_final %>% 
+  filter(country_iso %in% c("GIN" , "FRA", "PER", "BGD")) %>% 
+  mutate(country = case_when(
+    country_iso == "GIN" ~ "Guinea",
+    country_iso == "FRA" ~ "France",
+    country_iso == "PER" ~ "Peru",
+    country_iso == "BGD" ~ "Bangladesh"
+  ))
+
+hiv_plot <- ggplot(hiv_metadata_final1, aes(x = as.numeric(year), y = new_hiv_under14_numeric, color = country)) +
+  geom_line() +
+  labs(
+    title = "New HIV cases (0-14 years) for four countries",
+    x = "Year",
+    y = "New HIV cases"
+  ) +
+  theme_minimal()
+```
+
+
+```{r }
+
+# Group the data by country and calculate the number of HIV cases in 2022
+# Create top 15 countries data frame
+top_15_countries <- hiv_metadata_final2022 %>% 
+  arrange(desc(total_hiv_under14_numeric)) %>% 
+  head(15) %>% 
+  mutate(tooltip_label = paste(country, total_hiv_under14_numeric, sep = ": "))
+
+# Add a column to assign colors, giving India a specific color
+top_15_countries <- top_15_countries %>%
+  mutate(bar_color = ifelse(country == "India", "#eb8634", "#063d96"))  
+
+# Create ggplot object with conditional fill
+hiv_plot1 <- ggplot(top_15_countries, 
+                   aes(x = reorder(country, total_hiv_under14_numeric), 
+                       y = total_hiv_under14_numeric, 
+                       fill = bar_color, 
+                       text = tooltip_label)) +
+  geom_col() +
+  scale_fill_identity() + # Use the specified colors directly
+  labs(x = " ", y = "Total HIV cases (0–14 years) in 2022") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  coord_flip() # Optional: better visualization for vertical bars
+
+# Convert ggplot object to interactive plotly object
+hiv_plot_interactive1 <- ggplotly(hiv_plot1, tooltip = "text")
+```
+
+
+```{r}
+# Group the data by country and calculate the number of HIV new cases in 2022
+# Create top 15 countries data frame
+top_15_countries1 <- hiv_metadata_final2022 %>% 
+  arrange(desc(new_hiv_under14_numeric)) %>% 
+  head(15) %>% 
+  mutate(tooltip_label = paste(country, new_hiv_under14_numeric, sep = ": "))
+
+# Add a column to assign colors, giving India and Indonesia a specific color
+top_15_countries1 <- top_15_countries1 %>%
+  mutate(bar_color = ifelse(country %in% c("India", "Indonesia"), "#eb8634", "#063d96")) 
+  # Red for India and Indonesia, blue for others
+
+# Create ggplot object with conditional fill
+hiv_plot2 <- ggplot(top_15_countries1, 
+                   aes(x = reorder(country, new_hiv_under14_numeric), 
+                       y = new_hiv_under14_numeric, 
+                       fill = bar_color, 
+                       text = tooltip_label)) +
+  geom_col() +
+  scale_fill_identity() + # Use the specified colors directly
+  labs(x = " ", y = "Number of HIV new cases  (0–14 years) in 2022") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  coord_flip() # Optional: better visualization for vertical bars
+
+# Convert ggplot object to interactive plotly object
+hiv_plot_interactive2 <- ggplotly(hiv_plot2, tooltip = "text")
+```
+
+
+```{r}
+# Get min and max values for scale
+min_new_hiv_under14_numeric <- min(hiv_metadata_final$new_hiv_under14_numeric, na.rm = TRUE)
+max_new_hiv_under14_numeric <- max(hiv_metadata_final$new_hiv_under14_numeric, na.rm = TRUE)
+
+# Create Choropleth Map
+choropleth_map <- plot_geo(data = hiv_metadata_final) %>% 
+  add_trace(
+    z = ~new_hiv_under14_numeric,              # Correct the variable to match your dataset
+    zmin = min_new_hiv_under14_numeric,        # Insert min value for scale
+    zmax = max_new_hiv_under14_numeric,        # Insert max value for scale
+    locations = ~country,                      # Specify country column for mapping
+    locationmode = "country names",            # Use country names for geolocation
+    color = ~new_hiv_under14_numeric,          # Specify variable for coloring
+    frame = ~year                              # Create an animation frame by year
+  ) %>% 
+  colorbar(title = "HIV New Cases (0-14 years)") %>%   # Add colorbar title
+  layout(
+    title = "Choropleth Map of New HIV Cases (0-14 years)",
+    geo = list(
+      projection = list(type = "natural earth"),
+      showcoastlines = TRUE
+    )
+  )
+
+# Display the map
+# choropleth_map
+```
+
+
+
+
+
+
+
+
+# OVERVIEW
+
+## Row1 {height=13%}
+
+```{r}
+value_box(
+  title = tags$div(
+    style = "font-size: 0.9rem; font-weight: bold;",  # Reduce and style the title
+    "Highest HIV cases in 2022"
+  ),
+  value = tags$div(
+    style = "font-size: 0.9rem;",  # Match the font size with the title
+    paste0(highest_hiv_cases_country, ": ", highest_hiv_cases_value)  # Display country before value
+  ),
+  showcase = tags$span(
+    bsicons::bs_icon("align-top"),  # Ensure the closing bracket is at the correct place
+    style = "font-size: 0.7rem;"  # Adjust the heart icon size
+  ),
+  theme = value_box_theme(bg = "#063d96"),
+  p("")  # Remove the country name from this section
+)
+
+```
+
+```{r}
+value_box(
+  title = tags$div(
+    style = "font-size: 0.9rem; font-weight: bold;",  # Reduce and style the title
+    "Lowest HIV cases in 2022"
+  ),
+  value = tags$div(
+    style = "font-size: 0.9rem;",  # Match the font size with the title
+    paste0(lowest_hiv_cases_country, ": ", lowest_hiv_cases_value)  # Display country before value
+  ),
+  showcase = tags$span(
+    bsicons::bs_icon("align-bottom"),
+    style = "font-size: 0.7rem;"  # Adjust the icon size
+  ),
+  theme = value_box_theme(bg = "#548be3"),
+  p("")  # Remove the country name from this section
+)
+```
+
+```{r}
+value_box(
+  title = tags$div(
+    style = "font-size: 0.9rem; font-weight: bold;",  # Reduce and style the title
+    "Total HIV cases in 2022"
+  ),
+  value = tags$div(
+    style = "font-size: 0.9rem;",  # Match the font size with the title
+    paste0(total_hiv_0_14)  # Display total HIV cases
+  ),
+  showcase = bsicons::bs_icon("virus", width = 24),  # Adjust icon size,
+  theme = value_box_theme(bg = "#063d96")
+)
+```
+
+## Row2 {height=13%}
+
+```{r}
+value_box(
+  title = tags$div(
+    style = "font-size: 0.9rem; font-weight: bold;",  # Reduce and style the title
+    "Highest HIV new cases in 2022"
+  ),
+  value = tags$div(
+    style = "font-size: 0.9rem;",  # Match the font size with the title
+    paste0(highest_hiv_new_cases_country, ": ", highest_hiv_new_cases_value)  # Display country before value
+  ),
+  showcase = tags$span(
+    bsicons::bs_icon("align-top"),
+    style = "font-size: 0.7rem;"  # Adjust the heart icon size
+  ),
+  theme = value_box_theme(bg = "#063d96"),
+  p("")  # Remove the country name from this section
+)
+```
+
+```{r}
+value_box(
+  title = tags$div(
+    style = "font-size: 0.9rem; font-weight: bold;",  # Reduce and style the title
+    "Lowest HIV new cases in 2022"
+  ),
+  value = tags$div(
+    style = "font-size: 0.9rem;",  # Match the font size with the title
+    paste0(lowest_hiv_new_cases_country, ": ", lowest_hiv_new_cases_value)  # Display country before value
+  ),
+  showcase = tags$span(
+    bsicons::bs_icon("align-bottom"),
+    style = "font-size: 0.7rem;"  # Adjust the thermometer icon size
+  ),
+  theme = value_box_theme(bg = "#548be3"),
+  p("")  # Remove the country name from this section
+)
+```
+
+```{r}
+value_box(
+  title = tags$div(
+    style = "font-size: 0.8rem; font-weight: bold;",  # Reduced font size for the title
+    "Total HIV new cases in 2022"
+  ),
+  value = tags$div(
+    style = "font-size: 0.8rem;",  # Match the reduced font size for the value
+    paste0(total_hiv_nc_0_14)  # Display total HIV new cases
+  ),
+  showcase = bsicons::bs_icon("virus", width = 24),  # Adjust icon size
+  theme = value_box_theme(bg = "#063d96")
+)
+```
+
+## Row3 {height=74%}
+
+### {width=50%}
+
+```{r title="This table highlights the 15 countries with the highest total HIV burden among children (0–14 years) in 2022, led by South Africa with 230,000 cases."}
+
+hiv_plot_interactive1
+```
+
+### {width=50%}
+
+```{r title="This emphasizes the 15 countries with the highest new HIV burden among children (0–14 years) in 2022, led by Mozambique with 13,000 cases."}
+
+hiv_plot_interactive2
+```
+
+
+# HIV NEW CASES TREND
+
+## Row1 {height=100%}
+### {width=60%}
+
+```{r title= "HIV Data Visualization from 1990 to 2022 (0-14 years)"}
+
+ggplotly(plot1)
+```
+
+### {width=40%}
+
+```{r title= "This compares new HIV cases in 4 countries with different income levels. Guinea, a low-income country, is more affected. However, Bangladesh (lower middle income) has fewer cases compared to Peru (upper middle income)."}
+
+ggplotly(hiv_plot)
+```
+
+
+# NEW CASES MAPPING
+
+## Row1 {height=100%}
+
+```{r title= "The map shows Africa, especially Southern Africa, as the most affected by new HIV cases (ages 0-14) from 1990 to 2022. Data for some countries, like the USA and Japan, are missing due to their absence in the original HIV dataset from Gapminder."}
+
+choropleth_map
+```
+
+# DOWNLOAD DATA
+
+The data used in this dashboard is shown below and can be downloaded as a CSV.
+
+```{r}
+library(htmltools)
+
+htmltools::browsable(
+  tagList(
+    reactable(hiv_metadata_final, 
+              elementId = "hiv-table",
+              searchable= T,
+              filterable= T),
+tags$button("Download as CSV", onclick = "Reactable.downloadDataCSV('hiv-table')")
+    )
+  )
+
+```
+
+
+ 
+# ABOUT
+
+This dashboard examines data on total and new HIV cases among children aged 0-14 years across 94 countries from 1990 to 2022.
+
+Key points:
+
+In 2022, South Africa reported the highest number of HIV cases with 230,000, while Fiji reported the lowest with 100 cases, resulting in a total of 1,347,500 cases globally. Additionally, Mozambique had the highest number of new cases at 13,000, whereas Cambodia recorded the lowest at 100, with a cumulative total of 109,560 cases.
+
+In general, Africa remains the most affected continent by HIV over time.
+
+Data comes from the  Gapminder website, and is originally sourced from the Gapminder Foundation.
+
+The Gapminder Foundation is a non-profit venture registered in Stockholm, Sweden, that promotes sustainable global development and achievement of the United Nations Millennium Development Goals by increased use and understanding of statistics and other information about social, economic, and environmental development at local, national, and global levels.
+
+Gapminder was founded in 2005 by Ola Rosling, Anna Rosling Rönnlund, and Hans Rosling.The name Gapminder was derived from the “Mind the Gap” warning messages on the London Underground.
+
+Source: UNAIDS estimates.
+
+
+1-https://www.gapminder.org/data/
+
+
+
+2-https://docs.google.com/spreadsheets/d/1qHalit8sXC0R8oVXibc2wa2gY7bkwGzOybEMTWp-08o/edit?gid=501532268#gid=501532268
+
+
+
+
+
+
+
