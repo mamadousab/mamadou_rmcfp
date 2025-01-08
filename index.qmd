@@ -1,7 +1,14 @@
 ---
 title: "HIV:0-14 YEARS-Mamadou Saidou Alareny Baldé (Guinea)"
-format: dashboard  
+format: 
+  dashboard:
+    nav-buttons: [github]
+    github: https://github.com/https://mamadousab.github.io/mamadou_rmcfp/
 theme: lux
+execute:
+  echo: false
+  warning: false
+  message: false
 ---
 
 ```{r}
@@ -278,13 +285,12 @@ plot1 <- hiv_metadata_final %>%
   
   labs(
     x = "Total HIV (0 to 14 years)",
-    y = "New HIV (0 to 14 years)",
-    
+    y = "New HIV (0 to 14 years)"
   ) +
-  theme_minimal() 
+  theme_minimal()
 
 # Convert to interactive plot
- # ggplotly(plot1)
+# ggplotly(plot1)
 
 ```
 
